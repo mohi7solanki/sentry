@@ -289,8 +289,12 @@ class TimeRangeSelector extends React.PureComponent {
     });
   };
 
-  renderRelativeSelector = ({onClick, selected, hasFeature}) => (
-    <RelativeSelector onClick={onClick} selected={selected} hasFeature={hasFeature} />
+  renderRelativeSelector = ({handleSelectRelative, selected, hasFeature}) => (
+    <RelativeSelector
+      onClick={handleSelectRelative}
+      selected={selected}
+      hasFeature={hasFeature}
+    />
   );
 
   render() {
@@ -347,11 +351,11 @@ class TimeRangeSelector extends React.PureComponent {
                   organization={organization}
                   renderDisabled={({children, ...props}) => children({...props})}
                 >
-                  {({hasFeature, renderRelativeSelector}) => (
+                  {({hasFeature, renderRelativeSelector, renderDisabled}) => (
                     <SelectorList isAbsoluteSelected={isAbsoluteSelected}>
                       {shouldShowRelative &&
                         (renderRelativeSelector || this.renderRelativeSelector)({
-                          onClick: this.handleSelectRelative,
+                          handleSelectRelative: this.handleSelectRelative,
                           selected,
                           hasFeature,
                         })}
@@ -359,11 +363,12 @@ class TimeRangeSelector extends React.PureComponent {
                         <SelectorItem
                           onClick={this.handleAbsoluteClick}
                           value="absolute"
-                          label={t('Absolute Date')}
+                          label={t('Absolute date')}
                           selected={isAbsoluteSelected}
                           last={true}
                         />
                       )}
+                      {!hasFeature && renderDisabled()}
                     </SelectorList>
                   )}
                 </Feature>
