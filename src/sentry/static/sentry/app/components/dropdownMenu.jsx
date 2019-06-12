@@ -101,7 +101,12 @@ class DropdownMenu extends React.Component {
       onClickOutside(e);
     }
 
-    this.handleClose(e);
+    // Timeout to handle clicks in react portals (e.g. `Hovercard`)
+    // before closing the dropdown. Portals are considered a click "outside"
+    // since they exist outside the DOM hierarchy of `DropdownMenu`
+    window.setTimeout(() => {
+      this.handleClose(e);
+    }, 0);
   };
 
   // Callback function from <DropdownMenu> to see if we should close menu
