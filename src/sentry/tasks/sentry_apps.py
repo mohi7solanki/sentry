@@ -6,7 +6,7 @@ from celery.task import current
 from django.core.urlresolvers import reverse
 from requests.exceptions import RequestException
 
-from sentry.http import safe_urlopen
+from sentry.http import safe_urlopen, record_http_metrics
 from sentry.tasks.base import instrumented_task, retry
 from sentry.utils.http import absolute_uri
 from sentry.api.serializers import serialize, AppPlatformEvent
@@ -96,11 +96,22 @@ def send_alert_event(event, rule, sentry_app_id):
         data=data,
     )
 
-    safe_urlopen(
+    response = safe_urlopen(
         url=sentry_app.webhook_url,
         data=request_data.body,
         headers=request_data.headers,
         timeout=5,
+    )
+
+    record_http_metrics(
+        response=response,
+        key='webhook',
+        instance='sentry.tasks.sentry_apps.send_alert_event',
+        tags={
+            'integration_platform': True,
+            'event': 'event_alert.triggered',
+            'sentry_app': sentry_app.slug,
+        }
     )
 
 
@@ -147,7 +158,13 @@ def _process_resource_change(action, sender, instance_id, retryer=None, *args, *
     for installation in installations:
         data = {}
         data[name] = serialize(instance)
-        send_webhooks(installation, event, data=data)
+
+        send_webhooks(
+            installation,
+            event,
+            data=data,
+            instance='sentry.tasks.sentry_apps.process_resource_change',
+        )
 
 
 @instrumented_task('sentry.tasks.process_resource_change', **TASK_OPTIONS)
@@ -226,6 +243,7 @@ def workflow_notification(installation_id, issue_id, type, user_id, *args, **kwa
         event=u'issue.{}'.format(type),
         data=data,
         actor=user,
+        instance='sentry.tasks.sentry_apps.workflow_notification',
     )
 
 
@@ -241,7 +259,7 @@ def notify_sentry_app(event, futures):
         )
 
 
-def send_webhooks(installation, event, **kwargs):
+def send_webhooks(installation, event, instance=None, **kwargs):
     try:
         servicehook = ServiceHook.objects.get(
             organization_id=installation.organization_id,
@@ -269,9 +287,20 @@ def send_webhooks(installation, event, **kwargs):
 
         request_data = AppPlatformEvent(**kwargs)
 
-        safe_urlopen(
+        response = safe_urlopen(
             url=servicehook.sentry_app.webhook_url,
             data=request_data.body,
             headers=request_data.headers,
             timeout=5,
+        )
+
+        record_http_metrics(
+            response=response,
+            key='webhook',
+            instance=(instance or 'sentry.tasks.sentry_apps.send_webhooks'),
+            tags={
+                'integration_platform': True,
+                'event': event,
+                'sentry_app': servicehook.sentry_app.slug,
+            }
         )

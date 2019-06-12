@@ -21,6 +21,7 @@ from six.moves.urllib.parse import urlparse
 
 from sentry.models import EventError
 from sentry.exceptions import RestrictedIPAddress
+from sentry.utils import metrics
 from sentry.utils.cache import cache
 from sentry.utils.hashlib import md5_text
 from sentry.utils.strings import truncatechars
@@ -265,3 +266,32 @@ def fetch_file(
             response.close()
 
     return UrlResult(url, result[0], result[1], result[2], result[3])
+
+
+def record_http_metrics(response, key=None, instance=None, tags=None):
+    key = key or 'request'
+    tags = tags or {}
+    instance = instance or 'sentry.http'
+
+    metrics.incr(
+        u'{}.sent'.format(key),
+        instance=instance,
+        tags=tags,
+        skip_internal=False,
+    )
+
+    result_tags = {}
+    result_tags.update(tags)
+    result_tags.update(status_code=response.status_code)
+
+    if response.status_code in range(200, 300):
+        key = u'{}.delivered'.format(key)
+    else:
+        key = u'{}.failed'.format(key)
+
+    metrics.incr(
+        key,
+        instance=instance,
+        tags=result_tags,
+        skip_internal=False,
+    )
