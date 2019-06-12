@@ -76,8 +76,10 @@ describe('DropdownLink', function() {
         const evt = document.createEvent('HTMLEvents');
         evt.initEvent('click', false, true);
         document.body.dispatchEvent(evt);
-        wrapper.update();
-        expect(wrapper.find('li')).toHaveLength(0);
+        setTimeout(() => {
+          wrapper.update();
+          expect(wrapper.find('li')).toHaveLength(0);
+        }, 0);
       });
 
       it('closes when dropdown actor button is clicked', function() {
