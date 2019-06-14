@@ -1,2 +1,2 @@
 
-from __future__ import aslute_import
+from __future__ importaslute_import
